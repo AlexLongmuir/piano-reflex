@@ -197,7 +197,7 @@ export default function DrillPage() {
                 target={correct === false ? question.targetNotes : undefined}
                 targetKeyIds={correct === false ? question.targetKeyIds : undefined}
                 onPress={toggleNote}
-                showLabels={question.mode !== "keyboard-identify"}
+                showLabels={question.mode !== "keyboard-identify" && question.mode !== "keyboard-reverse"}
                 disabled={correct !== null && question.mode !== "keyboard-reverse"}
               />
             )}
@@ -231,7 +231,7 @@ export default function DrillPage() {
               </div>
             ) : question.mode === "keyboard-reverse" ? (
               <p className="rounded-md border border-zinc-850 bg-black/30 p-4 text-sm text-zinc-400">
-                Click the matching key on the piano. Labels are visible in reverse mode for a cleaner first version.
+                Click the matching key on the piano.
               </p>
             ) : (
               <ChoiceGrid question={question} submitted={submitted} correct={correct} onSubmit={submit} />
