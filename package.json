@@ -7,9 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json"
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "audit:design": "node scripts/audit-design.mjs"
   },
   "dependencies": {
+    "@fontsource-variable/fraunces": "^5.2.9",
+    "@fontsource-variable/instrument-sans": "^5.2.8",
     "@next/eslint-plugin-next": "latest",
     "clsx": "latest",
     "lucide-react": "latest",
@@ -26,6 +29,7 @@
     "@types/react-dom": "latest",
     "eslint": "latest",
     "eslint-config-next": "latest",
+    "puppeteer": "^25.1.0",
     "tailwindcss": "latest",
     "typescript": "latest"
   }
