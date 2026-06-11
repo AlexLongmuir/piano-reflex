@@ -239,7 +239,7 @@ export default function DrillPage() {
                         key={note}
                         className="pop-in rounded-full border border-ivory/10 bg-ivory/6 px-2.5 py-1 text-xs font-semibold text-ivory"
                       >
-                        {musicLabel(NOTE_LABELS[note]).split(" ")[0]}
+                        {musicLabel(NOTE_LABELS[note]).split("/")[0]}
                       </span>
                     ))
                   )}
@@ -283,7 +283,7 @@ export default function DrillPage() {
 
 function displayAnswer(question: QuizQuestion) {
   if (question.mode === "chord-build" || question.mode === "scale-build") {
-    return question.targetNotes?.map((note) => musicLabel(NOTE_LABELS[note]).split(" ")[0]).join(" ") ?? question.answer;
+    return question.targetNotes?.map((note) => musicLabel(NOTE_LABELS[note]).split("/")[0]).join(" ") ?? question.answer;
   }
   return musicLabel(question.answer);
 }

@@ -27,10 +27,7 @@ export function percent(value: number, total: number) {
   return `${Math.round((value / total) * 100)}%`;
 }
 
-/** Typographic accidentals: "C#/Db" → "C♯ D♭", "Bb minor" → "B♭ minor". */
+/** Typographic accidentals: "C#/Db" → "C♯/D♭", "Bb minor" → "B♭ minor". */
 export function musicLabel(label: string) {
-  return label
-    .replace(/([A-G])#/g, "$1♯")
-    .replace(/([A-G])b/g, "$1♭")
-    .replace("/", " ");
+  return label.replace(/([A-G])#/g, "$1♯").replace(/([A-G])b/g, "$1♭");
 }

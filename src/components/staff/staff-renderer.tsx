@@ -16,27 +16,27 @@ export function StaffRenderer({ clef, noteKey }: Props) {
     ref.current.innerHTML = "";
 
     const renderer = new Renderer(ref.current, Renderer.Backends.SVG);
-    renderer.resize(340, 140);
+    renderer.resize(260, 140);
     const context = renderer.getContext();
     context.setFillStyle("#f2eee3");
     context.setStrokeStyle("#f2eee3");
 
-    const stave = new Stave(10, 22, 320);
+    const stave = new Stave(10, 22, 240);
     stave.addClef(clef);
     stave.setStyle({ strokeStyle: "rgba(242,238,227,0.55)" });
     stave.setContext(context).draw();
 
     const note = new StaveNote({ clef, keys: [noteKey], duration: "q" });
     const voice = new Voice({ numBeats: 1, beatValue: 4 }).addTickables([note]);
-    new Formatter().joinVoices([voice]).format([voice], 200);
+    new Formatter().joinVoices([voice]).format([voice], 130);
     voice.draw(context, stave);
 
     const svg = ref.current.querySelector("svg");
     if (svg) {
-      svg.setAttribute("viewBox", "0 0 340 140");
+      svg.setAttribute("viewBox", "0 0 260 140");
       svg.setAttribute("width", "100%");
       svg.removeAttribute("height");
-      svg.style.maxWidth = "340px";
+      svg.style.maxWidth = "260px";
     }
   }, [clef, noteKey]);
 

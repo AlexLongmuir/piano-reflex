@@ -67,7 +67,7 @@ export function CircleOfFifths({ prompt, revealed }: Props) {
                 fontWeight={600}
                 opacity={revealed || isFocus ? 1 : 0.18}
               >
-                {revealed || isFocus ? musicLabel(NOTE_LABELS[key.major]).split(" ")[0] : "·"}
+                {revealed || isFocus ? musicLabel(NOTE_LABELS[key.major]).split("/")[0] : "·"}
               </text>
               <text
                 x={inner.x}
@@ -79,7 +79,7 @@ export function CircleOfFifths({ prompt, revealed }: Props) {
                 fontWeight={500}
                 opacity={revealed ? 0.85 : 0}
               >
-                {musicLabel(NOTE_LABELS[key.minor]).split(" ")[0]}m
+                {musicLabel(NOTE_LABELS[key.minor]).split("/")[0]}m
               </text>
             </g>
           );

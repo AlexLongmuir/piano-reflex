@@ -2,18 +2,20 @@
 
 Piano Reflex is a focused piano theory reaction trainer built for adult beginner practice. It helps with keyboard note recognition, staff notation, major/minor triads, common scale patterns, circle of fifths relationships, and essential piano/music vocabulary.
 
-The product direction is deliberately restrained: dark studio/trainer aesthetic, custom piano keyboard UI, fast feedback, local progress, and no backend complexity.
+The design language is built from the instrument itself — ebony, ivory, brass, and the red felt strip — with a geometrically accurate piano, synthesized Web Audio key sounds, a WebGL ambient backdrop, and spring-based motion throughout. See [docs/DESIGN.md](docs/DESIGN.md) for the full system.
 
 ## Tech Stack
 
 - Next.js App Router
 - TypeScript
-- Tailwind CSS
+- Tailwind CSS v4 (design tokens via `@theme`)
 - VexFlow for staff notation rendering
+- Web Audio (synthesized — no samples) for key tones and feedback cues
+- Self-hosted Fraunces + Instrument Sans via Fontsource
 - Local browser storage for progress and weak areas
 - Vercel-friendly static/client-first architecture
 
-No Supabase, no backend, no auth, no Web MIDI, and no audio playback.
+No Supabase, no backend, no auth, and no Web MIDI.
 
 ## Run Locally
 
@@ -28,7 +30,10 @@ Production checks:
 
 ```bash
 npm run typecheck
+npm run lint
 npm run build
+npm run audit:design   # boots the app, screenshots every screen at iPhone +
+                       # desktop viewports into .audit/, verifies answer flows
 ```
 
 ## Main Features

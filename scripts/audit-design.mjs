@@ -103,9 +103,10 @@ async function main() {
       if (reverseTab) {
         await sleep(600);
         const asked = await page.$eval("h1", (h) => h.textContent);
+        const askedNote = asked.match(/Find (.+) on the keyboard/)?.[1]?.trim();
         const pitch = Object.entries(labelMap).find(([, label]) => {
-          const pretty = label.replace("/", " ").replace("#", "♯").replace(/([A-G])b/, "$1♭");
-          return asked.includes(pretty) || asked.includes(label);
+          const pretty = label.replace("#", "♯").replace(/([A-G])b/, "$1♭");
+          return askedNote === pretty || askedNote === label;
         })?.[0];
         if (pitch) {
           await page.$eval(`[data-key-pitch="${pitch}"]`, (el) => {

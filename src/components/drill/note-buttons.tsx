@@ -16,7 +16,7 @@ export function NoteButtons({ onAnswer, disabled, selectedAnswer, correctAnswer 
       {ANSWER_LABELS.map((label) => {
         const isWrongPick = selectedAnswer === label && correctAnswer !== label;
         const isCorrect = correctAnswer === label;
-        const [natural, enharmonic] = musicLabel(label).split(" ");
+        const [natural, enharmonic] = musicLabel(label).split("/");
         return (
           <button
             key={label}

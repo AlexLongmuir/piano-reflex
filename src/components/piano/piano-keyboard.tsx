@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { KEYBOARD_KEYS, NOTE_LABELS } from "@/data/notes";
 import { playNote } from "@/lib/audio";
-import { cn } from "@/lib/utils";
+import { cn, musicLabel } from "@/lib/utils";
 import type { PitchClass } from "@/types/quiz";
 
 type Props = {
@@ -99,7 +99,7 @@ export function PianoKeyboard({
       navigator.vibrate?.(8);
       setPressedId(key.id);
       setBubble({
-        label: NOTE_LABELS[key.pitch],
+        label: musicLabel(NOTE_LABELS[key.pitch]),
         centerX: key.left + key.width / 2,
         black: key.type === "black",
       });
@@ -114,14 +114,15 @@ export function PianoKeyboard({
   );
 
   return (
-    <div className="piano-frame relative w-full select-none">
+    // max-width keeps key proportions honest when max-height caps the aspect
+    <div className="piano-frame relative mx-auto w-full max-w-[700px] select-none">
       {/* nameboard + red felt strip, like the real thing */}
       <div className="h-3 rounded-t-xl bg-[#16161a] shadow-[inset_0_1px_0_rgba(242,238,227,0.07)]" />
       <div className="h-[3px] bg-felt/80" />
 
       <div
-        className="relative w-full overflow-hidden rounded-b-xl bg-[#0e0e11]"
-        style={{ aspectRatio: "14 / 5", maxHeight: 250, perspective: 900 }}
+        className="relative aspect-[14/6.5] max-h-[250px] w-full overflow-hidden rounded-b-xl bg-[#0e0e11] sm:aspect-[14/5]"
+        style={{ perspective: 900 }}
       >
         {GEOMETRY.map((key) => {
           const isHighlighted = isActive(key.id, key.pitch, highlightedKeyIds, highlighted);
@@ -170,7 +171,7 @@ export function PianoKeyboard({
                     isBlack ? "text-ivory/60" : "text-ink/45",
                   )}
                 >
-                  {NOTE_LABELS[key.pitch].split("/")[0]}
+                  {musicLabel(NOTE_LABELS[key.pitch]).split("/")[0]}
                 </span>
               )}
               {isTarget && <span className="key-target-pulse" aria-hidden />}

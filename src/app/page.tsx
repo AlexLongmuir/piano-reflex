@@ -6,7 +6,7 @@ import { CountUp } from "@/components/fx/count-up";
 import { ModuleGlyph } from "@/components/ui/module-glyphs";
 import { useProgress } from "@/components/drill/progress-context";
 import { MODULES } from "@/data/modules";
-import { todayKey } from "@/lib/utils";
+import { musicLabel, todayKey } from "@/lib/utils";
 
 export default function DashboardPage() {
   const { progress } = useProgress();
@@ -32,7 +32,7 @@ export default function DashboardPage() {
           until naming a note feels like a reflex, not a calculation.
         </p>
 
-        <div className="mt-10 flex flex-wrap items-stretch gap-x-10 gap-y-6">
+        <div className="mt-10 grid grid-cols-2 gap-6 sm:flex sm:flex-wrap sm:items-stretch sm:gap-x-10">
           <HeroStat label="Accuracy" value={attempts ? (correct / attempts) * 100 : 0} format={(v) => `${Math.round(v)}%`} />
           <Divider />
           <HeroStat
@@ -130,5 +130,5 @@ function Divider() {
 
 function prettyTag(tag: string) {
   const [, detail] = tag.split(":");
-  return detail ?? tag;
+  return musicLabel(detail ?? tag);
 }

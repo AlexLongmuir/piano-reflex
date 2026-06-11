@@ -64,8 +64,9 @@ function CircleGlyph() {
       <circle cx="22" cy="22" r="13" {...STROKE} opacity="0.55" />
       {Array.from({ length: 12 }, (_, i) => {
         const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
-        const x = 22 + Math.cos(angle) * 13;
-        const y = 22 + Math.sin(angle) * 13;
+        // rounded so server and client serialize identically (hydration)
+        const x = Math.round((22 + Math.cos(angle) * 13) * 100) / 100;
+        const y = Math.round((22 + Math.sin(angle) * 13) * 100) / 100;
         return <circle key={i} cx={x} cy={y} r={i === 0 ? 2.2 : 1.1} fill="currentColor" opacity={i === 0 ? 1 : 0.45} />;
       })}
     </svg>
