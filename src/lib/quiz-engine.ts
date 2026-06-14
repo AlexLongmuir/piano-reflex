@@ -1,4 +1,5 @@
 import { CHORD_QUALITIES } from "@/data/chords";
+import type { ChordQuality } from "@/data/chords";
 import { CIRCLE_KEYS } from "@/data/circle-of-fifths";
 import { KEYBOARD_KEYS, NOTE_LABELS, PITCH_CLASSES } from "@/data/notes";
 import { SCALE_TYPES, type ScaleType } from "@/data/scales";
@@ -34,6 +35,9 @@ function keyIdsForPitches(notes: PitchClass[]) {
     .map((note) => KEYBOARD_KEYS.find((key) => key.pitch === note)?.id)
     .filter((keyId): keyId is string => Boolean(keyId));
 }
+
+export type ChordQuestionTarget = { root: PitchClass; quality: ChordQuality };
+export type ScaleQuestionTarget = { root: PitchClass; type: ScaleType };
 
 export function createKeyboardQuestion(options: {
   mode: "identify" | "reverse";
@@ -110,9 +114,9 @@ export function createStaffQuestion(clefMode: "mixed" | "treble" | "bass"): Quiz
   };
 }
 
-export function createChordQuestion(mode: "build" | "name"): QuizQuestion {
-  const root = sample(PITCH_CLASSES);
-  const quality = sample(["major", "minor"] as const);
+export function createChordQuestion(mode: "build" | "name", targets?: ChordQuestionTarget[]): QuizQuestion {
+  const target = sample(targets?.length ? targets : PITCH_CLASSES.flatMap((root) => (Object.keys(CHORD_QUALITIES) as ChordQuality[]).map((quality) => ({ root, quality }))));
+  const { root, quality } = target;
   const chord = CHORD_QUALITIES[quality];
   const notes = notesFromFormula(root, chord.formula);
   const answer = `${NOTE_LABELS[root]} ${chord.label}`;
@@ -150,13 +154,9 @@ export function createChordQuestion(mode: "build" | "name"): QuizQuestion {
   };
 }
 
-export function createScaleQuestion(): QuizQuestion {
-  const forcedExamples: [PitchClass, ScaleType][] = [
-    ["C#", "harmonic minor"],
-    ["C#", "melodic minor"],
-  ];
-  const useForced = Math.random() < 0.18;
-  const [root, type] = useForced ? sample(forcedExamples) : [sample(PITCH_CLASSES), sample(Object.keys(SCALE_TYPES) as ScaleType[])];
+export function createScaleQuestion(targets?: ScaleQuestionTarget[]): QuizQuestion {
+  const target = sample(targets?.length ? targets : PITCH_CLASSES.flatMap((root) => (Object.keys(SCALE_TYPES) as ScaleType[]).map((type) => ({ root, type }))));
+  const { root, type } = target;
   const scale = SCALE_TYPES[type];
   const notes = notesFromFormula(root, scale.formula);
   const label = `${NOTE_LABELS[root]} ${scale.label}`;

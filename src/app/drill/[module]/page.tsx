@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
-import { ArrowLeft, RotateCcw } from "lucide-react";
+import { ArrowLeft, BookOpen, ListChecks, RotateCcw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CHORD_QUALITIES, type ChordQuality } from "@/data/chords";
 import { NoteButtons } from "@/components/drill/note-buttons";
 import { CircleOfFifths } from "@/components/drill/circle-of-fifths";
 import { useProgress } from "@/components/drill/progress-context";
@@ -11,8 +12,21 @@ import { PianoKeyboard } from "@/components/piano/piano-keyboard";
 import { StaffRenderer } from "@/components/staff/staff-renderer";
 import { MODULES } from "@/data/modules";
 import { NOTE_LABELS, normalizeAnswer, PITCH_CLASSES } from "@/data/notes";
+import { SCALE_TYPES, type ScaleType } from "@/data/scales";
+import {
+  ALL_CHORD_PREFERENCES,
+  ALL_SCALE_PREFERENCES,
+  chordPreferenceKey,
+  defaultDrillPreferences,
+  loadDrillPreferences,
+  saveDrillPreferences,
+  scalePreferenceKey,
+  type ChordPreference,
+  type DrillPreferences,
+  type ScalePreference,
+} from "@/lib/drill-preferences";
 import { playAscending, playCorrect, playTick, playWrong } from "@/lib/audio";
-import { noteSetKey } from "@/lib/music-theory";
+import { noteListLabel, notesFromFormula, noteSetKey } from "@/lib/music-theory";
 import {
   createChordQuestion,
   createCircleQuestion,
@@ -30,6 +44,7 @@ type KeyboardMode = "identify" | "reverse";
 type StaffMode = "mixed" | "treble" | "bass";
 type ChordMode = "mixed" | "build" | "name";
 type SelectedKey = { keyId: string; pitch: PitchClass };
+type OpenPanel = "content" | "cheat-sheet" | null;
 
 const AUTO_ADVANCE_MS = 1500;
 
@@ -44,6 +59,8 @@ export default function DrillPage() {
   const [keyboardFilter, setKeyboardFilter] = useState<KeyboardFilter>("mixed");
   const [staffMode, setStaffMode] = useState<StaffMode>("mixed");
   const [chordMode, setChordMode] = useState<ChordMode>("mixed");
+  const [drillPreferences, setDrillPreferences] = useState<DrillPreferences>(() => defaultDrillPreferences());
+  const [openPanel, setOpenPanel] = useState<OpenPanel>(null);
   const [question, setQuestion] = useState<QuizQuestion | null>(null);
   const [startedAt, setStartedAt] = useState(0);
   const [selectedKeys, setSelectedKeys] = useState<SelectedKey[]>([]);
@@ -55,23 +72,43 @@ export default function DrillPage() {
   const [streak, setStreak] = useState(0);
   const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(() => {
+    setDrillPreferences(loadDrillPreferences());
+  }, []);
+
+  function updateDrillPreferences(next: DrillPreferences) {
+    setDrillPreferences(next);
+    saveDrillPreferences(next);
+  }
+
+  const selectedChordKeys = useMemo(() => new Set(drillPreferences.chords.map(chordPreferenceKey)), [drillPreferences.chords]);
+  const selectedScaleKeys = useMemo(() => new Set(drillPreferences.scales.map(scalePreferenceKey)), [drillPreferences.scales]);
+  const activeChordTargets = useMemo(
+    () => ALL_CHORD_PREFERENCES.filter((item) => selectedChordKeys.has(chordPreferenceKey(item))),
+    [selectedChordKeys],
+  );
+  const activeScaleTargets = useMemo(
+    () => ALL_SCALE_PREFERENCES.filter((item) => selectedScaleKeys.has(scalePreferenceKey(item))),
+    [selectedScaleKeys],
+  );
+
   const buildQuestion = useMemo(
     () => () => {
       if (moduleId === "keyboard-notes") return createKeyboardQuestion({ mode: keyboardMode, keyFilter: keyboardFilter });
       if (moduleId === "staff-notes") return createStaffQuestion(staffMode);
-      if (moduleId === "chords") return createChordQuestion(chordMode === "mixed" ? (Math.random() > 0.5 ? "build" : "name") : chordMode);
-      if (moduleId === "scales") return createScaleQuestion();
+      if (moduleId === "chords") return createChordQuestion(chordMode === "mixed" ? (Math.random() > 0.5 ? "build" : "name") : chordMode, activeChordTargets);
+      if (moduleId === "scales") return createScaleQuestion(activeScaleTargets);
       if (moduleId === "circle-of-fifths") return createCircleQuestion();
       if (moduleId === "piano-terms") return createTermQuestion();
       return createQuestion(moduleId);
     },
-    [moduleId, keyboardMode, keyboardFilter, staffMode, chordMode],
+    [moduleId, keyboardMode, keyboardFilter, staffMode, chordMode, activeChordTargets, activeScaleTargets],
   );
 
   useEffect(() => {
     queueMicrotask(() => nextQuestion());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [moduleId, keyboardMode, keyboardFilter, staffMode, chordMode]);
+  }, [moduleId, keyboardMode, keyboardFilter, staffMode, chordMode, activeChordTargets, activeScaleTargets]);
 
   useEffect(() => () => {
     if (advanceTimer.current) clearTimeout(advanceTimer.current);
@@ -204,7 +241,29 @@ export default function DrillPage() {
           setStaffMode={setStaffMode}
           chordMode={chordMode}
           setChordMode={setChordMode}
+          chordCount={activeChordTargets.length}
+          scaleCount={activeScaleTargets.length}
+          openPanel={openPanel}
+          setOpenPanel={setOpenPanel}
         />
+
+        {openPanel === "content" && (moduleId === "chords" || moduleId === "scales") && (
+          <ContentSelector
+            moduleId={moduleId}
+            preferences={drillPreferences}
+            onApply={updateDrillPreferences}
+            onClose={() => setOpenPanel(null)}
+          />
+        )}
+
+        {openPanel === "cheat-sheet" && (moduleId === "chords" || moduleId === "scales") && (
+          <CheatSheet
+            moduleId={moduleId}
+            chordPreferences={activeChordTargets}
+            scalePreferences={activeScaleTargets}
+            onClose={() => setOpenPanel(null)}
+          />
+        )}
 
         {question && (
           <div key={`${question.id}-body`} className="q-enter mt-7 space-y-6">
@@ -322,6 +381,10 @@ function Controls(props: {
   setStaffMode: (mode: StaffMode) => void;
   chordMode: ChordMode;
   setChordMode: (mode: ChordMode) => void;
+  chordCount: number;
+  scaleCount: number;
+  openPanel: OpenPanel;
+  setOpenPanel: (panel: OpenPanel) => void;
 }) {
   if (props.moduleId === "keyboard-notes") {
     return (
@@ -335,9 +398,330 @@ function Controls(props: {
     return <div className="mt-5"><Segment value={props.staffMode} options={["mixed", "treble", "bass"]} onChange={(value) => props.setStaffMode(value as StaffMode)} /></div>;
   }
   if (props.moduleId === "chords") {
-    return <div className="mt-5"><Segment value={props.chordMode} options={["mixed", "build", "name"]} onChange={(value) => props.setChordMode(value as ChordMode)} /></div>;
+    return (
+      <div className="mt-5 flex flex-wrap items-center gap-2.5">
+        <Segment value={props.chordMode} options={["mixed", "build", "name"]} onChange={(value) => props.setChordMode(value as ChordMode)} />
+        <DrillPanelButtons
+          summary={props.chordCount === ALL_CHORD_PREFERENCES.length ? "Testing all chords" : `Testing ${props.chordCount} chords`}
+          openPanel={props.openPanel}
+          setOpenPanel={props.setOpenPanel}
+        />
+      </div>
+    );
+  }
+  if (props.moduleId === "scales") {
+    return (
+      <div className="mt-5 flex flex-wrap items-center gap-2.5">
+        <DrillPanelButtons
+          summary={props.scaleCount === ALL_SCALE_PREFERENCES.length ? "Testing all scales" : `Testing ${props.scaleCount} scales`}
+          openPanel={props.openPanel}
+          setOpenPanel={props.setOpenPanel}
+        />
+      </div>
+    );
   }
   return null;
+}
+
+function DrillPanelButtons({
+  summary,
+  openPanel,
+  setOpenPanel,
+}: {
+  summary: string;
+  openPanel: OpenPanel;
+  setOpenPanel: (panel: OpenPanel) => void;
+}) {
+  return (
+    <>
+      <span className="rounded-full border border-ivory/8 bg-ink/40 px-3.5 py-2 text-xs font-semibold text-bone">{summary}</span>
+      <button
+        type="button"
+        onClick={() => {
+          playTick();
+          setOpenPanel(openPanel === "content" ? null : "content");
+        }}
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full border border-ivory/8 bg-ink/40 px-3.5 py-2 text-xs font-semibold text-bone transition-all duration-200 hover:border-ivory/20 hover:text-ivory active:scale-95",
+          openPanel === "content" && "border-brass/40 bg-brass/12 text-brass",
+        )}
+      >
+        <ListChecks size={14} />
+        Choose content
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          playTick();
+          setOpenPanel(openPanel === "cheat-sheet" ? null : "cheat-sheet");
+        }}
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full border border-ivory/8 bg-ink/40 px-3.5 py-2 text-xs font-semibold text-bone transition-all duration-200 hover:border-ivory/20 hover:text-ivory active:scale-95",
+          openPanel === "cheat-sheet" && "border-brass/40 bg-brass/12 text-brass",
+        )}
+      >
+        <BookOpen size={14} />
+        Cheat sheet
+      </button>
+    </>
+  );
+}
+
+function ContentSelector({
+  moduleId,
+  preferences,
+  onApply,
+  onClose,
+}: {
+  moduleId: ModuleId;
+  preferences: DrillPreferences;
+  onApply: (preferences: DrillPreferences) => void;
+  onClose: () => void;
+}) {
+  const isChords = moduleId === "chords";
+  const [draftChordKeys, setDraftChordKeys] = useState(() => new Set(preferences.chords.map(chordPreferenceKey)));
+  const [draftScaleKeys, setDraftScaleKeys] = useState(() => new Set(preferences.scales.map(scalePreferenceKey)));
+  const chordQualities = Object.keys(CHORD_QUALITIES) as ChordQuality[];
+  const scaleTypes = Object.keys(SCALE_TYPES) as ScaleType[];
+  const activeCount = isChords ? draftChordKeys.size : draftScaleKeys.size;
+
+  useEffect(() => {
+    setDraftChordKeys(new Set(preferences.chords.map(chordPreferenceKey)));
+    setDraftScaleKeys(new Set(preferences.scales.map(scalePreferenceKey)));
+  }, [preferences]);
+
+  function apply() {
+    if (activeCount === 0) return;
+    onApply({
+      version: 1,
+      chords: ALL_CHORD_PREFERENCES.filter((item) => draftChordKeys.has(chordPreferenceKey(item))),
+      scales: ALL_SCALE_PREFERENCES.filter((item) => draftScaleKeys.has(scalePreferenceKey(item))),
+    });
+    onClose();
+  }
+
+  function toggleChord(item: ChordPreference) {
+    const key = chordPreferenceKey(item);
+    setDraftChordKeys((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function toggleScale(item: ScalePreference) {
+    const key = scalePreferenceKey(item);
+    setDraftScaleKeys((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  return (
+    <div className="mt-5 rounded-2xl border border-ivory/8 bg-ink/35 p-4 sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-display text-lg font-medium text-ivory">Choose content</h2>
+          <p className="mt-1 text-[13px] text-bone/75">
+            {activeCount ? `${activeCount} ${isChords ? "chord" : "scale"}${activeCount === 1 ? "" : "s"} selected` : "Select at least one item before applying."}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              playTick();
+              return isChords
+                ? setDraftChordKeys(new Set(ALL_CHORD_PREFERENCES.map(chordPreferenceKey)))
+                : setDraftScaleKeys(new Set(ALL_SCALE_PREFERENCES.map(scalePreferenceKey)));
+            }}
+            className="rounded-full border border-ivory/8 bg-ivory/4 px-3.5 py-2 text-xs font-semibold text-bone transition-all duration-200 hover:border-ivory/20 hover:text-ivory active:scale-95"
+          >
+            All
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              playTick();
+              return isChords ? setDraftChordKeys(new Set()) : setDraftScaleKeys(new Set());
+            }}
+            className="rounded-full border border-ivory/8 bg-ivory/4 px-3.5 py-2 text-xs font-semibold text-bone transition-all duration-200 hover:border-ivory/20 hover:text-ivory active:scale-95"
+          >
+            None
+          </button>
+          {!isChords && (
+            <button
+              type="button"
+              onClick={() => {
+                playTick();
+                setDraftScaleKeys(
+                  new Set(
+                    (["natural minor", "harmonic minor", "melodic minor"] as ScaleType[]).map((type) =>
+                      scalePreferenceKey({ root: "C#", type }),
+                    ),
+                  ),
+                );
+              }}
+              className="rounded-full border border-ivory/8 bg-ivory/4 px-3.5 py-2 text-xs font-semibold text-bone transition-all duration-200 hover:border-brass/35 hover:text-brass active:scale-95"
+            >
+              C# minor scales
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4 max-h-96 overflow-auto rounded-2xl border border-ivory/8">
+        <div className="min-w-[34rem] divide-y divide-ivory/6">
+          {PITCH_CLASSES.map((root) => (
+            <div key={root} className="grid grid-cols-[4rem_1fr] items-center gap-3 px-3 py-2">
+              <div className="text-sm font-semibold text-brass">{musicLabel(NOTE_LABELS[root])}</div>
+              <div className={cn("grid gap-2", isChords ? "grid-cols-2" : "grid-cols-4")}>
+                {isChords
+                  ? chordQualities.map((quality) => {
+                      const item = { root, quality };
+                      const selected = draftChordKeys.has(chordPreferenceKey(item));
+                      return (
+                        <SelectorToggle key={quality} selected={selected} label={quality} onClick={() => toggleChord(item)} />
+                      );
+                    })
+                  : scaleTypes.map((type) => {
+                      const item = { root, type };
+                      const selected = draftScaleKeys.has(scalePreferenceKey(item));
+                      return (
+                        <SelectorToggle key={type} selected={selected} label={SCALE_TYPES[type].label} onClick={() => toggleScale(item)} />
+                      );
+                    })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <p className={cn("text-[13px]", activeCount ? "text-bone/70" : "text-felt")}>
+          {activeCount ? "Changes apply to the next question." : "The current quiz pool stays unchanged until at least one item is selected."}
+        </p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              playTick();
+              onClose();
+            }}
+            className="rounded-full border border-ivory/8 px-4 py-2 text-xs font-semibold text-bone transition-all duration-200 hover:text-ivory active:scale-95"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              playTick();
+              apply();
+            }}
+            disabled={!activeCount}
+            className="rounded-full bg-ivory px-4 py-2 text-xs font-semibold text-ink transition-all duration-200 hover:bg-brass active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            Apply
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SelectorToggle({ selected, label, onClick }: { selected: boolean; label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        playTick();
+        onClick();
+      }}
+      className={cn(
+        "min-h-10 rounded-xl border px-3 py-2 text-left text-xs font-semibold capitalize transition-all duration-200 active:scale-[0.98]",
+        selected ? "border-brass/45 bg-brass/16 text-brass" : "border-ivory/8 bg-ivory/4 text-bone hover:border-ivory/20 hover:text-ivory",
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
+function CheatSheet({
+  moduleId,
+  chordPreferences,
+  scalePreferences,
+  onClose,
+}: {
+  moduleId: ModuleId;
+  chordPreferences: ChordPreference[];
+  scalePreferences: ScalePreference[];
+  onClose: () => void;
+}) {
+  const isChords = moduleId === "chords";
+  return (
+    <div className="mt-5 rounded-2xl border border-ivory/8 bg-ink/35 p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="font-display text-lg font-medium text-ivory">Cheat sheet</h2>
+          <p className="mt-1 text-[13px] text-bone/75">
+            {isChords ? "Major and minor triads from your active chord pool." : "Major, natural minor, harmonic minor, and melodic minor from your active scale pool."}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            playTick();
+            onClose();
+          }}
+          className="rounded-full border border-ivory/8 px-3.5 py-2 text-xs font-semibold text-bone transition-all duration-200 hover:text-ivory active:scale-95"
+        >
+          Close
+        </button>
+      </div>
+
+      <div className="mt-4 grid max-h-96 gap-3 overflow-auto sm:grid-cols-2">
+        {isChords
+          ? chordPreferences.map((item) => {
+              const chord = CHORD_QUALITIES[item.quality];
+              const notes = notesFromFormula(item.root, chord.formula);
+              return (
+                <ReferenceCard
+                  key={chordPreferenceKey(item)}
+                  title={`${musicLabel(NOTE_LABELS[item.root])} ${chord.label}`}
+                  formula={`Formula: ${chord.formula.join(" - ")}`}
+                  notes={noteListLabel(notes)}
+                />
+              );
+            })
+          : scalePreferences.map((item) => {
+              const scale = SCALE_TYPES[item.type];
+              const notes = notesFromFormula(item.root, scale.formula);
+              return (
+                <ReferenceCard
+                  key={scalePreferenceKey(item)}
+                  title={`${musicLabel(NOTE_LABELS[item.root])} ${scale.label}`}
+                  formula={`Steps: ${scale.steps}`}
+                  notes={noteListLabel(notes)}
+                />
+              );
+            })}
+      </div>
+    </div>
+  );
+}
+
+function ReferenceCard({ title, formula, notes }: { title: string; formula: string; notes: string }) {
+  return (
+    <div className="rounded-2xl border border-ivory/8 bg-ivory/4 p-4">
+      <h3 className="font-semibold text-ivory">{title}</h3>
+      <p className="mt-2 text-xs text-bone/70">{formula}</p>
+      <p className="mt-3 text-[13px] font-semibold leading-6 text-brass">{musicLabel(notes)}</p>
+    </div>
+  );
 }
 
 function Segment({ value, options, onChange }: { value: string; options: string[]; onChange: (value: string) => void }) {
