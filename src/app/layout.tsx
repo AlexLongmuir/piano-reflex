@@ -10,8 +10,9 @@ import "@fontsource-variable/instrument-sans/index.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Piano Reflex",
-  description: "Train instant recall of keys, staves, chords, and scales.",
+  title: "Piano Reflex | Piano Trainer for Notes, Chords, Scales & Staff Reading",
+  description:
+    "Fast piano theory drills for adult beginners. Train instant recall of keyboard notes, staff notation, major and minor chords, scales, and the circle of fifths.",
   icons: {
     icon: "/favicon.svg",
   },

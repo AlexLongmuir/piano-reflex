@@ -1,6 +1,6 @@
 # Piano Reflex
 
-Piano Reflex is a focused piano theory reaction trainer built for adult beginner practice. It helps with keyboard note recognition, staff notation, major/minor triads, common scale patterns, circle of fifths relationships, and essential piano/music vocabulary.
+Piano Reflex is a focused piano trainer and piano theory reaction trainer built for adult beginner practice. It helps with keyboard note recognition, staff notation, major/minor triads, common scale patterns, circle of fifths relationships, and essential piano/music vocabulary.
 
 The design language is built from the instrument itself — ebony, ivory, brass, and the red felt strip — with a geometrically accurate piano, synthesized Web Audio key sounds, a WebGL ambient backdrop, and spring-based motion throughout. See [docs/DESIGN.md](docs/DESIGN.md) for the full system.
 

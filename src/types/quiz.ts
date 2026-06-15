@@ -38,6 +38,7 @@ export type QuizQuestion = {
   answer: string;
   choices?: string[];
   targetNotes?: PitchClass[];
+  targetNoteLabels?: string[];
   highlightedNotes?: PitchClass[];
   targetKeyIds?: string[];
   highlightedKeyIds?: string[];
