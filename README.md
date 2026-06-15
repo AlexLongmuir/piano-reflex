@@ -1,8 +1,5 @@
 # Piano Reflex
-
-Piano Reflex is a focused piano theory reaction trainer built for adult beginner practice. It helps with keyboard note recognition, staff notation, major/minor triads, common scale patterns, circle of fifths relationships, and essential piano/music vocabulary.
-
-The design language is built from the instrument itself — ebony, ivory, brass, and the red felt strip — with a geometrically accurate piano, synthesized Web Audio key sounds, a WebGL ambient backdrop, and spring-based motion throughout. See [docs/DESIGN.md](docs/DESIGN.md) for the full system.
+Out of fear of my piano teacher, I built this website (https://piano-reflex.vercel.app/) to help practice reading, theory & vocabulary whilst on to go. 
 
 ## Tech Stack
 
@@ -17,28 +14,11 @@ The design language is built from the instrument itself — ebony, ivory, brass,
 
 No Supabase, no backend, no auth, and no Web MIDI.
 
-## Run Locally
-
-```bash
-npm install
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000).
-
-Production checks:
-
-```bash
-npm run typecheck
-npm run lint
-npm run build
-npm run audit:design   # boots the app, screenshots every screen at iPhone +
-                       # desktop viewports into .audit/, verifies answer flows
-```
+The design language is built from the instrument itself — ebony, ivory, brass, and the red felt strip — with a geometrically accurate piano, synthesized Web Audio key sounds, a WebGL ambient backdrop, and spring-based motion throughout. See [docs/DESIGN.md](docs/DESIGN.md) for the full system.
 
 ## Main Features
 
-- Dashboard with Today&apos;s Progress, headline performance metrics, module cards, and weak areas.
+- Dashboard with Today's Progress, headline performance metrics, module cards, and weak areas.
 - Keyboard Notes:
   - highlighted key to note-name answer
   - note-name prompt to actual piano key click
