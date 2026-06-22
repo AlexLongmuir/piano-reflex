@@ -4,7 +4,13 @@ import { CIRCLE_KEYS } from "@/data/circle-of-fifths";
 import { KEYBOARD_KEYS, NOTE_LABELS, PITCH_CLASSES } from "@/data/notes";
 import { SCALE_TYPES, type ScaleType } from "@/data/scales";
 import { PIANO_TERMS } from "@/data/terms";
-import { noteListLabel, notesFromFormula, noteSetKey } from "@/lib/music-theory";
+import {
+  noteListLabel,
+  notesFromFormula,
+  noteSetKey,
+  scaleNoteLabelsFromFormula,
+  scaleNotesFromFormula,
+} from "@/lib/music-theory";
 import { sample, shuffle } from "@/lib/utils";
 import type { ModuleId, PitchClass, QuizQuestion } from "@/types/quiz";
 
@@ -159,6 +165,8 @@ export function createScaleQuestion(targets?: ScaleQuestionTarget[]): QuizQuesti
   const { root, type } = target;
   const scale = SCALE_TYPES[type];
   const notes = notesFromFormula(root, scale.formula);
+  const playableNotes = scaleNotesFromFormula(root, scale.formula);
+  const playableLabels = scaleNoteLabelsFromFormula(root, scale.formula);
   const label = `${NOTE_LABELS[root]} ${scale.label}`;
 
   return {
@@ -167,10 +175,11 @@ export function createScaleQuestion(targets?: ScaleQuestionTarget[]): QuizQuesti
     mode: "scale-build",
     prompt: `Build ${label}`,
     answer: notes.join("-"),
-    targetNotes: notes,
-    targetKeyIds: keyIdsForPitches(notes),
+    targetNotes: playableNotes,
+    targetNoteLabels: playableLabels,
+    targetKeyIds: keyIdsForPitches(playableNotes),
     weakAreaTags: [`scale:${type}`, `root:${NOTE_LABELS[root]}`],
-    explanation: `${label}: ${noteListLabel(notes)} · ${scale.steps}`,
+    explanation: `${label}: ${playableLabels.join(" ")} · ${scale.steps}`,
   };
 }
 

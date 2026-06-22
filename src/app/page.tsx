@@ -23,13 +23,13 @@ export default function DashboardPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 pb-24 pt-12 sm:px-6 sm:pt-16">
       <section className="rise-in">
-        <p className="label-caps">Reaction trainer</p>
+        <p className="label-caps">Piano reflex trainer</p>
         <h1 className="mt-4 max-w-2xl font-display text-[40px] font-medium leading-[1.06] tracking-[-0.02em] text-ivory sm:text-6xl">
-          Recall, faster than&nbsp;thought.
+          Piano theory recall, faster than&nbsp;thought.
         </h1>
         <p className="mt-5 max-w-xl text-[15px] leading-7 text-bone">
-          Short, focused drills for keys, staves, chords, scales, and the circle of fifths —
-          until naming a note feels like a reflex, not a calculation.
+          A focused piano trainer for keyboard notes, staff notation, chords, scales, and the
+          circle of fifths — until naming a note feels like a reflex, not a calculation.
         </p>
 
         <div className="mt-10 grid grid-cols-2 gap-6 sm:flex sm:flex-wrap sm:items-stretch sm:gap-x-10">

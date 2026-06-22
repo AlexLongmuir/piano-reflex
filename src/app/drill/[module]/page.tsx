@@ -11,7 +11,7 @@ import { useProgress } from "@/components/drill/progress-context";
 import { PianoKeyboard } from "@/components/piano/piano-keyboard";
 import { StaffRenderer } from "@/components/staff/staff-renderer";
 import { MODULES } from "@/data/modules";
-import { NOTE_LABELS, normalizeAnswer, PITCH_CLASSES } from "@/data/notes";
+import { ANSWER_LABELS, NOTE_LABELS, normalizeAnswer, PITCH_CLASSES } from "@/data/notes";
 import { SCALE_TYPES, type ScaleType } from "@/data/scales";
 import {
   ALL_CHORD_PREFERENCES,
@@ -26,7 +26,7 @@ import {
   type ScalePreference,
 } from "@/lib/drill-preferences";
 import { playAscending, playCorrect, playTick, playWrong } from "@/lib/audio";
-import { noteListLabel, notesFromFormula, noteSetKey } from "@/lib/music-theory";
+import { noteListLabel, notesFromFormula, noteSetKey, scaleNoteLabelsFromFormula } from "@/lib/music-theory";
 import {
   createChordQuestion,
   createCircleQuestion,
@@ -47,6 +47,62 @@ type SelectedKey = { keyId: string; pitch: PitchClass };
 type OpenPanel = "content" | "cheat-sheet" | null;
 
 const AUTO_ADVANCE_MS = 1500;
+const TYPED_NOTE_TIMEOUT_MS = 650;
+
+function normalizeTypedNote(input: string) {
+  return input
+    .trim()
+    .toLowerCase()
+    .replaceAll("♯", "#")
+    .replaceAll("♭", "b")
+    .replace(/\s+/g, "")
+    .replace("sharp", "#")
+    .replace("flat", "b");
+}
+
+const TYPED_NOTE_ALIASES: Record<string, string> = {
+  c: "C",
+  "b#": "C",
+  "c#": "C#/Db",
+  db: "C#/Db",
+  d: "D",
+  "d#": "D#/Eb",
+  eb: "D#/Eb",
+  e: "E",
+  fb: "E",
+  "e#": "F",
+  f: "F",
+  "f#": "F#/Gb",
+  gb: "F#/Gb",
+  g: "G",
+  "g#": "G#/Ab",
+  ab: "G#/Ab",
+  a: "A",
+  "a#": "A#/Bb",
+  bb: "A#/Bb",
+  b: "B",
+  cb: "B",
+};
+
+function typedNoteToAnswer(input: string) {
+  return TYPED_NOTE_ALIASES[normalizeTypedNote(input)] ?? null;
+}
+
+function answerForTypedNote(question: QuizQuestion, input: string) {
+  const noteAnswer = typedNoteToAnswer(input);
+  if (!noteAnswer || !question.choices?.length) return null;
+  if (question.choices.includes(noteAnswer)) return noteAnswer;
+  return question.choices.find((choice) => choice.startsWith(`${noteAnswer} `)) ?? null;
+}
+
+function acceptsTypedNotes(question: QuizQuestion) {
+  return question.choices?.some((choice) => ANSWER_LABELS.some((label) => choice === label || choice.startsWith(`${label} `))) ?? false;
+}
+
+function isTypingTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false;
+  return target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target.isContentEditable;
+}
 
 export default function DrillPage() {
   const params = useParams<{ module: ModuleId }>();
@@ -71,9 +127,12 @@ export default function DrillPage() {
   const [sessionCorrect, setSessionCorrect] = useState(0);
   const [streak, setStreak] = useState(0);
   const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typedNoteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typedNoteBuffer = useRef("");
+  const submitRef = useRef<(answer: string) => void>(() => {});
 
   useEffect(() => {
-    setDrillPreferences(loadDrillPreferences());
+    queueMicrotask(() => setDrillPreferences(loadDrillPreferences()));
   }, []);
 
   function updateDrillPreferences(next: DrillPreferences) {
@@ -112,10 +171,83 @@ export default function DrillPage() {
 
   useEffect(() => () => {
     if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    if (typedNoteTimer.current) clearTimeout(typedNoteTimer.current);
   }, []);
+
+  useEffect(() => {
+    function clearTypedNote() {
+      typedNoteBuffer.current = "";
+      if (typedNoteTimer.current) clearTimeout(typedNoteTimer.current);
+      typedNoteTimer.current = null;
+    }
+
+    function submitTypedNote(input: string) {
+      const answer = question ? answerForTypedNote(question, input) : null;
+      clearTypedNote();
+      if (answer) submitRef.current(answer);
+    }
+
+    function queueNaturalNote(input: string) {
+      clearTypedNote();
+      typedNoteBuffer.current = input;
+      typedNoteTimer.current = setTimeout(() => submitTypedNote(input), TYPED_NOTE_TIMEOUT_MS);
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (!question || correct !== null || isTypingTarget(event.target) || event.metaKey || event.ctrlKey || event.altKey) return;
+
+      if (event.key === "Escape") {
+        clearTypedNote();
+        return;
+      }
+
+      if (event.key === "Enter" && typedNoteBuffer.current) {
+        event.preventDefault();
+        submitTypedNote(typedNoteBuffer.current);
+        return;
+      }
+
+      const choiceIndex = Number(event.key) - 1;
+      if (question.choices && Number.isInteger(choiceIndex) && choiceIndex >= 0 && choiceIndex < question.choices.length) {
+        event.preventDefault();
+        clearTypedNote();
+        submitRef.current(question.choices[choiceIndex]);
+        return;
+      }
+
+      if (!acceptsTypedNotes(question)) return;
+
+      if ((event.key === "#" || event.key === "♯") && typedNoteBuffer.current) {
+        event.preventDefault();
+        submitTypedNote(`${typedNoteBuffer.current}#`);
+        return;
+      }
+
+      if ((event.key === "b" || event.key === "♭") && typedNoteBuffer.current) {
+        event.preventDefault();
+        const flatAnswer = answerForTypedNote(question, `${typedNoteBuffer.current}b`);
+        if (flatAnswer) submitTypedNote(`${typedNoteBuffer.current}b`);
+        else queueNaturalNote("b");
+        return;
+      }
+
+      if (/^[a-gA-G]$/.test(event.key)) {
+        event.preventDefault();
+        queueNaturalNote(event.key);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      clearTypedNote();
+    };
+  }, [question, correct]);
 
   function nextQuestion() {
     if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    if (typedNoteTimer.current) clearTimeout(typedNoteTimer.current);
+    typedNoteBuffer.current = "";
     setQuestion(buildQuestion());
     setStartedAt(performance.now());
     setSelectedKeys([]);
@@ -160,6 +292,8 @@ export default function DrillPage() {
       nextStreak,
     );
   }
+
+  submitRef.current = submit;
 
   function toggleNote(key: { id: string; pitch: PitchClass }) {
     if (!question || correct !== null) return;
@@ -341,6 +475,9 @@ export default function DrillPage() {
 }
 
 function displayAnswer(question: QuizQuestion) {
+  if (question.mode === "scale-build" && question.targetNoteLabels?.length) {
+    return question.targetNoteLabels.map((note) => musicLabel(note)).join(" ");
+  }
   if (question.mode === "chord-build" || question.mode === "scale-build") {
     return question.targetNotes?.map((note) => musicLabel(NOTE_LABELS[note]).split("/")[0]).join(" ") ?? question.answer;
   }
@@ -486,8 +623,10 @@ function ContentSelector({
   const activeCount = isChords ? draftChordKeys.size : draftScaleKeys.size;
 
   useEffect(() => {
-    setDraftChordKeys(new Set(preferences.chords.map(chordPreferenceKey)));
-    setDraftScaleKeys(new Set(preferences.scales.map(scalePreferenceKey)));
+    queueMicrotask(() => {
+      setDraftChordKeys(new Set(preferences.chords.map(chordPreferenceKey)));
+      setDraftScaleKeys(new Set(preferences.scales.map(scalePreferenceKey)));
+    });
   }, [preferences]);
 
   function apply() {
@@ -699,13 +838,13 @@ function CheatSheet({
             })
           : scalePreferences.map((item) => {
               const scale = SCALE_TYPES[item.type];
-              const notes = notesFromFormula(item.root, scale.formula);
+              const notes = scaleNoteLabelsFromFormula(item.root, scale.formula).join(" ");
               return (
                 <ReferenceCard
                   key={scalePreferenceKey(item)}
                   title={`${musicLabel(NOTE_LABELS[item.root])} ${scale.label}`}
                   formula={`Steps: ${scale.steps}`}
-                  notes={noteListLabel(notes)}
+                  notes={notes}
                 />
               );
             })}
