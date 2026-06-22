@@ -42,6 +42,17 @@ function keyIdsForPitches(notes: PitchClass[]) {
     .filter((keyId): keyId is string => Boolean(keyId));
 }
 
+function keyIdsForAscendingScale(root: PitchClass, formula: number[]) {
+  const rootIndex = PITCH_CLASSES.indexOf(root);
+  return [...formula, 12]
+    .map((step) => {
+      const pitch = PITCH_CLASSES[(rootIndex + step) % PITCH_CLASSES.length];
+      const octave = 3 + Math.floor((rootIndex + step) / PITCH_CLASSES.length);
+      return KEYBOARD_KEYS.find((key) => key.pitch === pitch && key.octave === octave)?.id;
+    })
+    .filter((keyId): keyId is string => Boolean(keyId));
+}
+
 export type ChordQuestionTarget = { root: PitchClass; quality: ChordQuality };
 export type ScaleQuestionTarget = { root: PitchClass; type: ScaleType };
 
@@ -167,6 +178,7 @@ export function createScaleQuestion(targets?: ScaleQuestionTarget[]): QuizQuesti
   const notes = notesFromFormula(root, scale.formula);
   const playableNotes = scaleNotesFromFormula(root, scale.formula);
   const playableLabels = scaleNoteLabelsFromFormula(root, scale.formula);
+  const playableKeyIds = keyIdsForAscendingScale(root, scale.formula);
   const label = `${NOTE_LABELS[root]} ${scale.label}`;
 
   return {
@@ -174,10 +186,10 @@ export function createScaleQuestion(targets?: ScaleQuestionTarget[]): QuizQuesti
     moduleId: "scales",
     mode: "scale-build",
     prompt: `Build ${label}`,
-    answer: notes.join("-"),
+    answer: playableKeyIds.join("-"),
     targetNotes: playableNotes,
     targetNoteLabels: playableLabels,
-    targetKeyIds: keyIdsForPitches(playableNotes),
+    targetKeyIds: playableKeyIds,
     weakAreaTags: [`scale:${type}`, `root:${NOTE_LABELS[root]}`],
     explanation: `${label}: ${playableLabels.join(" ")} · ${scale.steps}`,
   };

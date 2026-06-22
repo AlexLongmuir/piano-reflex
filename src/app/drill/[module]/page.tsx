@@ -304,8 +304,11 @@ export default function DrillPage() {
     }
     if (question.mode !== "chord-build" && question.mode !== "scale-build") return;
     setSelectedKeys((current) => {
-      const existing = current.find((item) => item.pitch === key.pitch);
-      if (existing) return current.filter((item) => item.pitch !== key.pitch);
+      const existing = current.find((item) => item.keyId === key.id);
+      if (existing) return current.filter((item) => item.keyId !== key.id);
+      if (question.mode === "chord-build" && current.some((item) => item.pitch === key.pitch)) {
+        return current.filter((item) => item.pitch !== key.pitch);
+      }
       return [...current, { keyId: key.id, pitch: key.pitch }];
     });
   }
@@ -314,7 +317,7 @@ export default function DrillPage() {
     if (!question) return;
     const selectedNotes = selectedKeys.map((key) => key.pitch);
     if (question.mode === "scale-build") {
-      submit(selectedNotes.join("-"));
+      submit(selectedKeys.map((key) => key.keyId).join("-"));
       return;
     }
     submit(noteSetKey(selectedNotes));
@@ -427,12 +430,12 @@ export default function DrillPage() {
                   {selectedNotes.length === 0 ? (
                     <span className="text-[13px] text-bone/70">Tap keys to build it</span>
                   ) : (
-                    selectedNotes.map((note) => (
+                    selectedKeys.map((key) => (
                       <span
-                        key={note}
+                        key={key.keyId}
                         className="pop-in rounded-full border border-ivory/10 bg-ivory/6 px-2.5 py-1 text-xs font-semibold text-ivory"
                       >
-                        {musicLabel(NOTE_LABELS[note]).split("/")[0]}
+                        {musicLabel(NOTE_LABELS[key.pitch]).split("/")[0]}
                       </span>
                     ))
                   )}
